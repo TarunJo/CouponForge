@@ -9,7 +9,7 @@ router.get('/:uuid', async (req, res) => {
     const { uuid } = req.params;
     const db = await getDb();
 
-    const result = db.exec(
+    const result = await db.exec(
       `SELECT c.uuid, c.amount, c.description, c.currency, c.is_scratched, c.is_redeemed,
               c.customer_name, c.expires_at, c.created_at, c.scratched_at, c.validation_code,
               m.org_name, m.name as merchant_name, m.merchant_number
@@ -31,7 +31,7 @@ router.get('/:uuid', async (req, res) => {
     // Check if expired
     if (coupon.expires_at && new Date(coupon.expires_at) < new Date()) {
       // Delete expired coupon
-      db.run('DELETE FROM coupons WHERE uuid = ?', [uuid]);
+      await db.run('DELETE FROM coupons WHERE uuid = ?', [uuid]);
       saveDb();
       return res.status(410).json({ error: 'This coupon has expired' });
     }
@@ -58,7 +58,7 @@ router.post('/:uuid/scratch', async (req, res) => {
     const { uuid } = req.params;
     const db = await getDb();
 
-    const result = db.exec(
+    const result = await db.exec(
       `SELECT c.*, m.org_name, m.name as merchant_name, m.merchant_number
        FROM coupons c
        JOIN merchants m ON c.merchant_id = m.id
@@ -77,7 +77,7 @@ router.post('/:uuid/scratch', async (req, res) => {
 
     // Check if expired
     if (coupon.expires_at && new Date(coupon.expires_at) < new Date()) {
-      db.run('DELETE FROM coupons WHERE uuid = ?', [uuid]);
+      await db.run('DELETE FROM coupons WHERE uuid = ?', [uuid]);
       saveDb();
       return res.status(410).json({ error: 'This coupon has expired' });
     }
@@ -89,7 +89,7 @@ router.post('/:uuid/scratch', async (req, res) => {
 
     // Mark as scratched if not already
     if (!coupon.is_scratched) {
-      db.run(
+      await db.run(
         'UPDATE coupons SET is_scratched = 1, scratched_at = ? WHERE uuid = ?',
         [new Date().toISOString(), uuid]
       );

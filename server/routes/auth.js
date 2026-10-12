@@ -26,7 +26,7 @@ router.post('/admin/login', async (req, res) => {
     }
 
     const db = await getDb();
-    const result = db.exec('SELECT * FROM admins WHERE username = ?', [username]);
+    const result = await db.exec('SELECT * FROM admins WHERE username = ?', [username]);
     const admin = rowToObj(result);
 
     if (!admin) {
@@ -60,7 +60,7 @@ router.post('/merchant/login', async (req, res) => {
     }
 
     const db = await getDb();
-    const result = db.exec('SELECT * FROM merchants WHERE email = ? AND is_active = 1', [email]);
+    const result = await db.exec('SELECT * FROM merchants WHERE email = ? AND is_active = 1', [email]);
     const merchant = rowToObj(result);
 
     if (!merchant) {

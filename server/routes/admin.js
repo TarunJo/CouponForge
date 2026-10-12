@@ -22,7 +22,7 @@ router.post('/merchants', async (req, res) => {
     const db = await getDb();
 
     // Check if merchant_number or email already exists
-    const existingMerchant = db.exec(
+    const existingMerchant = await db.exec(
       'SELECT id FROM merchants WHERE merchant_number = ? OR email = ?',
       [merchant_number, email]
     );
@@ -33,7 +33,7 @@ router.post('/merchants', async (req, res) => {
 
     const password_hash = bcrypt.hashSync(password, 10);
 
-    db.run(
+    await db.run(
       `INSERT INTO merchants (merchant_number, org_name, name, email, phone, password_hash, address, created_by) 
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [merchant_number, org_name, name, email, phone || null, password_hash, address || null, req.user.id]
@@ -42,7 +42,7 @@ router.post('/merchants', async (req, res) => {
     saveDb();
 
     // Get the created merchant
-    const result = db.exec(
+    const result = await db.exec(
       'SELECT id, merchant_number, org_name, name, email, phone, address, is_active, created_at FROM merchants WHERE email = ?',
       [email]
     );
@@ -63,7 +63,7 @@ router.post('/merchants', async (req, res) => {
 router.get('/merchants', async (req, res) => {
   try {
     const db = await getDb();
-    const result = db.exec(
+    const result = await db.exec(
       'SELECT id, merchant_number, org_name, name, email, phone, address, is_active, created_at FROM merchants ORDER BY created_at DESC'
     );
 
@@ -94,7 +94,7 @@ router.put('/merchants/:id', async (req, res) => {
     const db = await getDb();
 
     // Check merchant exists
-    const existing = db.exec('SELECT id FROM merchants WHERE id = ?', [id]);
+    const existing = await db.exec('SELECT id FROM merchants WHERE id = ?', [id]);
     if (existing.length === 0 || existing[0].values.length === 0) {
       return res.status(404).json({ error: 'Merchant not found' });
     }
@@ -120,10 +120,10 @@ router.put('/merchants/:id', async (req, res) => {
     }
 
     params.push(id);
-    db.run(`UPDATE merchants SET ${updates.join(', ')} WHERE id = ?`, params);
+    await db.run(`UPDATE merchants SET ${updates.join(', ')} WHERE id = ?`, params);
     saveDb();
 
-    const result = db.exec(
+    const result = await db.exec(
       'SELECT id, merchant_number, org_name, name, email, phone, address, is_active, created_at FROM merchants WHERE id = ?',
       [id]
     );
@@ -146,12 +146,12 @@ router.delete('/merchants/:id', async (req, res) => {
     const { id } = req.params;
     const db = await getDb();
 
-    const existing = db.exec('SELECT id FROM merchants WHERE id = ?', [id]);
+    const existing = await db.exec('SELECT id FROM merchants WHERE id = ?', [id]);
     if (existing.length === 0 || existing[0].values.length === 0) {
       return res.status(404).json({ error: 'Merchant not found' });
     }
 
-    db.run('UPDATE merchants SET is_active = 0 WHERE id = ?', [id]);
+    await db.run('UPDATE merchants SET is_active = 0 WHERE id = ?', [id]);
     saveDb();
 
     res.json({ message: 'Merchant deactivated successfully' });

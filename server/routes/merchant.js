@@ -19,12 +19,12 @@ router.get('/dashboard', async (req, res) => {
     const db = await getDb();
     const merchantId = req.user.id;
 
-    const totalResult = db.exec('SELECT COUNT(*) as count FROM coupons WHERE merchant_id = ?', [merchantId]);
-    const activeResult = db.exec('SELECT COUNT(*) as count FROM coupons WHERE merchant_id = ? AND is_redeemed = 0', [merchantId]);
-    const scratchedResult = db.exec('SELECT COUNT(*) as count FROM coupons WHERE merchant_id = ? AND is_scratched = 1 AND is_redeemed = 0', [merchantId]);
-    const redeemedResult = db.exec('SELECT COUNT(*) as count FROM coupons WHERE merchant_id = ? AND is_redeemed = 1', [merchantId]);
-    const totalAmountResult = db.exec('SELECT COALESCE(SUM(amount), 0) as total FROM coupons WHERE merchant_id = ?', [merchantId]);
-    const activeAmountResult = db.exec('SELECT COALESCE(SUM(amount), 0) as total FROM coupons WHERE merchant_id = ? AND is_redeemed = 0', [merchantId]);
+    const totalResult = await db.exec('SELECT COUNT(*) as count FROM coupons WHERE merchant_id = ?', [merchantId]);
+    const activeResult = await db.exec('SELECT COUNT(*) as count FROM coupons WHERE merchant_id = ? AND is_redeemed = 0', [merchantId]);
+    const scratchedResult = await db.exec('SELECT COUNT(*) as count FROM coupons WHERE merchant_id = ? AND is_scratched = 1 AND is_redeemed = 0', [merchantId]);
+    const redeemedResult = await db.exec('SELECT COUNT(*) as count FROM coupons WHERE merchant_id = ? AND is_redeemed = 1', [merchantId]);
+    const totalAmountResult = await db.exec('SELECT COALESCE(SUM(amount), 0) as total FROM coupons WHERE merchant_id = ?', [merchantId]);
+    const activeAmountResult = await db.exec('SELECT COALESCE(SUM(amount), 0) as total FROM coupons WHERE merchant_id = ? AND is_redeemed = 0', [merchantId]);
 
     const getVal = (result) => (result.length > 0 && result[0].values.length > 0) ? result[0].values[0][0] : 0;
 
@@ -64,7 +64,7 @@ router.post('/coupons', async (req, res) => {
       expiresAt = expiryDate.toISOString();
     }
 
-    db.run(
+    await db.run(
       `INSERT INTO coupons (uuid, merchant_id, amount, description, currency, customer_name, customer_phone, expires_at, validation_code) 
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
@@ -110,7 +110,7 @@ router.get('/coupons', async (req, res) => {
     const db = await getDb();
     const merchantId = req.user.id;
 
-    const result = db.exec(
+    const result = await db.exec(
       `SELECT id, uuid, amount, description, currency, is_scratched, is_redeemed, 
               customer_name, customer_phone, expires_at, created_at, scratched_at, redeemed_at, validation_code 
        FROM coupons WHERE merchant_id = ? ORDER BY created_at DESC`,
@@ -157,7 +157,7 @@ router.post('/coupons/validate', async (req, res) => {
       params = [validation_code, req.user.id];
     }
 
-    const result = db.exec(query, params);
+    const result = await db.exec(query, params);
 
     if (result.length === 0 || result[0].values.length === 0) {
       return res.status(404).json({ error: 'Coupon not found or does not belong to your account', valid: false });
@@ -176,7 +176,7 @@ router.post('/coupons/validate', async (req, res) => {
     // Check if expired
     if (coupon.expires_at && new Date(coupon.expires_at) < new Date()) {
       // Delete expired coupon
-      db.run('DELETE FROM coupons WHERE id = ?', [coupon.id]);
+      await db.run('DELETE FROM coupons WHERE id = ?', [coupon.id]);
       saveDb();
       return res.status(400).json({ error: 'Coupon has expired', valid: false });
     }
@@ -216,7 +216,7 @@ router.post('/coupons/redeem', async (req, res) => {
     }
 
     const db = await getDb();
-    const result = db.exec(
+    const result = await db.exec(
       'SELECT * FROM coupons WHERE uuid = ? AND merchant_id = ?',
       [uuid, req.user.id]
     );
@@ -235,7 +235,7 @@ router.post('/coupons/redeem', async (req, res) => {
     }
 
     // Delete the coupon from DB to save memory (as per requirement)
-    db.run('DELETE FROM coupons WHERE id = ?', [coupon.id]);
+    await db.run('DELETE FROM coupons WHERE id = ?', [coupon.id]);
     saveDb();
 
     res.json({
@@ -260,12 +260,12 @@ router.delete('/coupons/:id', async (req, res) => {
     const { id } = req.params;
     const db = await getDb();
 
-    const existing = db.exec('SELECT id FROM coupons WHERE id = ? AND merchant_id = ?', [id, req.user.id]);
+    const existing = await db.exec('SELECT id FROM coupons WHERE id = ? AND merchant_id = ?', [id, req.user.id]);
     if (existing.length === 0 || existing[0].values.length === 0) {
       return res.status(404).json({ error: 'Coupon not found' });
     }
 
-    db.run('DELETE FROM coupons WHERE id = ? AND merchant_id = ?', [id, req.user.id]);
+    await db.run('DELETE FROM coupons WHERE id = ? AND merchant_id = ?', [id, req.user.id]);
     saveDb();
 
     res.json({ message: 'Coupon deleted successfully' });
