@@ -17,6 +17,9 @@ const couponRoutes = require('./routes/coupon');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Trust reverse proxy (Render, Cloudflare, etc.) so express-rate-limit tracks real client IPs
+app.set('trust proxy', 1);
+
 // ========================================
 // SECURITY MIDDLEWARE
 // ========================================
@@ -82,11 +85,13 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// General rate limiting for public routes
+// General rate limiting for public routes (per client IP)
 const publicLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: 500, // 500 requests per 15 minutes per IP
   message: { error: 'Too many requests. Please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
 // Stricter limit for coupon scratch (prevent automated scratching)

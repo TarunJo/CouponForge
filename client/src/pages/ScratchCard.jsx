@@ -13,6 +13,7 @@ export default function ScratchCard() {
   const canvasRef = useRef(null);
   const isDrawing = useRef(false);
   const lastPoint = useRef(null);
+  const scratchTriggered = useRef(false);
 
   useEffect(() => {
     fetchCoupon();
@@ -28,6 +29,7 @@ export default function ScratchCard() {
       }
       setCoupon(data.coupon);
       if (data.coupon.is_scratched) {
+        scratchTriggered.current = true;
         setIsRevealed(true);
       }
     } catch (err) {
@@ -38,10 +40,18 @@ export default function ScratchCard() {
   };
 
   const handleScratch = async () => {
+    if (scratchTriggered.current) return;
+    scratchTriggered.current = true;
+
     try {
       const res = await fetch(`${API_BASE}/coupon/${uuid}/scratch`, { method: 'POST' });
       const data = await res.json();
       if (!res.ok) {
+        // If it was already scratched, refresh coupon details rather than showing error
+        if (data.error && data.error.toLowerCase().includes('already')) {
+          fetchCoupon();
+          return;
+        }
         setError(data.error);
         return;
       }
@@ -130,7 +140,7 @@ export default function ScratchCard() {
     const progress = (cleared / (pixels.length / 4)) * 100;
     setScratchProgress(progress);
 
-    if (progress > 40 && !isRevealed) {
+    if (progress > 40 && !scratchTriggered.current && !isRevealed) {
       handleScratch();
     }
   };
